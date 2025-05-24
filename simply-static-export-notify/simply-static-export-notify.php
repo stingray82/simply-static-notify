@@ -5,7 +5,7 @@
  * Tested up to:      6.8.1
  * Requires at least: 6.5
  * Requires PHP:      8.0
- * Version:           1.0
+ * Version:           1.0.1
  * Author:            reallyusefulplugins.com
  * Author URI:        https://reallyusefulplugins.com
  * License:           GPL2
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('rup_simply_static_export_notify_VERSION', '1.0');
+define('rup_simply_static_export_notify_VERSION', '1.0.1');
 define('rup_simply_static_export_notify_DIR', plugin_dir_path(__FILE__));
 define('rup_simply_static_export_notify_URL', plugin_dir_url(__FILE__));
 
@@ -45,7 +45,7 @@ add_action( 'plugins_loaded', function() {
         'slug'        => 'simply-static-export-notify',  // "rup-changelogger"
         'name'        => 'Simply Static Export & Notify',        // "Changelogger"
         'version'     => rup_simply_static_export_notify_VERSION,     // "1.01"
-        'key'         => 'YourSecretKeyHere',
+        'key'         => '7tfbdV9znHuZtzLfmctUg6',
         'server'      => 'https://updater.reallyusefulplugins.com/u/',
     ];
 
