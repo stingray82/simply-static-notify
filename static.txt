@@ -1,0 +1,16 @@
+Allow you to automatically export when saving post types and get discord notifications, including scheduled Posts
+
+== Description ==
+
+Allow you to automatically export when saving post types and get discord notifications, including scheduled Posts
+
+== Installation ==
+
+1. Upload the `simply-static-export-notify` folder to the `/wp-content/plugins/` directory.
+2. Activate the plugin through the 'Plugins' menu in WordPress.
+3. Configure the plugin settings it is located in the Simply Static Menu
+
+== Frequently Asked Questions ==
+
+= How do I modify the settings =
+After Activating Navigate to the new submenu in the simply static menu `Export/Notify` and modify your settings there
