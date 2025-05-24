@@ -3,7 +3,8 @@ setlocal enabledelayedexpansion
 REM ============================================
 REM CONFIGURATION - adjust these paths as needed
 REM ============================================
-SET "PLUIGN_NAME=Simply Static Export And Notify"
+REM  Precede any special character (like &, |, ^, <, >) with a caret ^.
+SET "PLUIGN_NAME=Simply Static Export ^& Notify"
 SET "PLUGIN_TAGS=simplystatic, automation, export, static, "
 SET "HEADER_SCRIPT=C:\Ignore By Avast\0. PATHED Items\Plugins\deployscripts\myplugin_headers.php"
 SET "PLUGIN_DIR=C:\Users\Nathan\Git\simply-static-notify\simply-static-export-notify"
