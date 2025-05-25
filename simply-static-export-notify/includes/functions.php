@@ -23,7 +23,7 @@ class SS_Export_Notify_Plugin {
         $defaults = [
             'debug'               => false,
             'interval'            => 300,
-            'post_types'          => ['post', 'page'],
+            'post_types'          => [],
             'destination_domain'  => home_url(),
             'discord_webhook'     => '',
             'message_template'    => 'Export Complete – {site_url}',
