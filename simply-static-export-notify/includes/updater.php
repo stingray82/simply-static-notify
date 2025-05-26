@@ -90,9 +90,11 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
         private function register_hooks() {
             if ( ! empty( $this->config['plugin_file'] ) ) {
                 add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'plugin_update' ] );
+                add_filter( 'site_transient_update_plugins', [ $this, 'plugin_update' ] ); // 6.8 Potential Fix
                 add_filter( 'plugins_api',                         [ $this, 'plugin_info' ], 10, 3 );
             } else {
                 add_filter( 'pre_set_site_transient_update_themes', [ $this, 'theme_update' ] );
+                add_filter( 'site_transient_update_themes', [ $this, 'theme_update' ] ); // 6.8 Potential Fix
                 add_filter( 'themes_api',                           [ $this, 'theme_info' ], 10, 3 );
             }
         }
