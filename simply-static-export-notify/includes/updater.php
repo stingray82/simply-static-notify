@@ -79,10 +79,10 @@
  *        then redirects back to Plugins (or Themes) so you see the fresh data.
  */
 
-
 namespace UUPD\V1;
 
 if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
+
     class UUPD_Updater_V1 {
 
         /** @var array Configuration settings */
@@ -109,12 +109,12 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
         private function register_hooks() {
             if ( ! empty( $this->config['plugin_file'] ) ) {
                 add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'plugin_update' ] );
-                add_filter( 'site_transient_update_plugins', [ $this, 'plugin_update' ] ); // 6.8 Potential Fix
-                add_filter( 'plugins_api', [ $this, 'plugin_info' ], 10, 3 );
+                add_filter( 'site_transient_update_plugins',     [ $this, 'plugin_update' ] ); // WP 6.8
+                add_filter( 'plugins_api',                       [ $this, 'plugin_info' ], 10, 3 );
             } else {
                 add_filter( 'pre_set_site_transient_update_themes', [ $this, 'theme_update' ] );
-                add_filter( 'site_transient_update_themes', [ $this, 'theme_update' ] ); // 6.8 Potential Fix
-                add_filter( 'themes_api', [ $this, 'theme_info' ], 10, 3 );
+                add_filter( 'site_transient_update_themes',          [ $this, 'theme_update' ] ); // WP 6.8
+                add_filter( 'themes_api',                            [ $this, 'theme_info' ], 10, 3 );
             }
         }
 
@@ -155,36 +155,65 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
 
         /** Handle plugin update injection. */
         public function plugin_update( $trans ) {
-            if ( ! is_object( $trans ) ) {
+            if ( ! is_object( $trans ) || ! isset( $trans->checked ) || ! is_array( $trans->checked ) ) {
                 return $trans;
             }
-            $c      = $this->config;
-            $file   = $c['plugin_file'];
-            $this->log( "→ Plugin-update hook for '{$c['slug']}'" );
-            $current = $trans->checked[ $file ] ?? $c['version'];
 
-            $meta = get_transient( 'upd_' . $c['slug'] );
+            $c    = $this->config;
+            $file = $c['plugin_file'];
+
+            $this->log( "→ Plugin-update hook for '{$c['slug']}'" );
+
+            $current = $trans->checked[ $file ] ?? $c['version'];
+            $meta    = get_transient( 'upd_' . $c['slug'] );
+
             if ( false === $meta ) {
                 $this->fetch_remote();
                 $meta = get_transient( 'upd_' . $c['slug'] );
             }
 
+            // If no update is available, inject to 'no_update':
             if ( ! $meta || version_compare( $meta->version ?? '0.0.0', $current, '<=' ) ) {
+                $trans->no_update[ $file ] = (object) [
+                    'id'            => $file,
+                    'slug'          => $c['slug'],
+                    'plugin'        => $file,
+                    'new_version'   => $current,
+                    'url'           => $meta->homepage ?? '',
+                    'package'       => '',
+                    'icons'         => isset( $meta->icons ) ? (array) $meta->icons   : [],
+                    'banners'       => isset( $meta->banners ) ? (array) $meta->banners : [],
+                    'tested'        => $meta->tested   ?? '',
+                    'requires'      => $meta->requires ?? $meta->min_wp_version ?? '',
+                    'requires_php'  => $meta->requires_php ?? '',
+                    'compatibility' => new \stdClass(),
+                ];
                 return $trans;
             }
 
+            // If an update is available, inject full metadata to 'response'
             $this->log( "✓ Injecting plugin update v" . ( $meta->version ?? 'unknown' ) );
-
             $trans->response[ $file ] = (object) [
-                'name'        => $c['name'],
-                'slug'        => $c['slug'],
-                'new_version' => $meta->version ?? $c['version'],
-                'package'     => $meta->download_url ?? '',
-                'tested'      => $meta->tested ?? '',
-                'requires'    => $meta->requires       ?? $meta->min_wp_version ?? '',
-                'sections'    => isset( $meta->sections ) ? (array) $meta->sections : [],
-                'icons'       => isset( $meta->icons )    ? (array) $meta->icons    : [],
+                'id'            => $file,
+                'name'          => $c['name'],
+                'slug'          => $c['slug'],
+                'plugin'        => $file,
+                'new_version'   => $meta->version ?? $c['version'],
+                'package'       => $meta->download_url ?? '',
+                'url'           => $meta->homepage ?? '',
+                'tested'        => $meta->tested ?? '',
+                'requires'      => $meta->requires ?? $meta->min_wp_version ?? '',
+                'requires_php'  => $meta->requires_php ?? '',
+                'sections'      => isset( $meta->sections ) ? (array) $meta->sections : [],
+                'icons'         => isset( $meta->icons ) ? (array) $meta->icons   : [],
+                'banners'       => isset( $meta->banners ) ? (array) $meta->banners : [],
+                'compatibility' => new \stdClass(),
             ];
+
+            // Remove any stale 'no_update'.
+            if ( isset( $trans->no_update[ $file ] ) ) {
+                unset( $trans->no_update[ $file ] );
+            }
 
             return $trans;
         }
@@ -231,16 +260,14 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
             ];
         }
 
-
         /** Handle theme update injection. */
         public function theme_update( $trans ) {
-            if ( ! is_object( $trans ) ) {
+            if ( ! is_object( $trans ) || ! isset( $trans->checked ) || ! is_array( $trans->checked ) ) {
                 return $trans;
             }
-            $c       = $this->config;            
+            $c       = $this->config;
             $slug    = $c['slug'];
-            $current = $trans->checked[ $slug ]
-                     ?? wp_get_theme( $slug )->get( 'Version' );
+            $current = $trans->checked[ $slug ] ?? wp_get_theme( $slug )->get( 'Version' );
 
             $meta = get_transient( 'upd_' . $slug );
             if ( false === $meta ) {
@@ -248,16 +275,34 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
                 $meta = get_transient( 'upd_' . $slug );
             }
 
+            // Base theme information
+            $base_info = [
+                'theme'       => $slug,
+                'url'         => $meta->homepage ?? '',
+                'requires'    => $meta->requires ?? '',
+                'requires_php'=> $meta->requires_php ?? '',
+                'screenshot'  => $meta->screenshot ?? ''
+            ];
+
+            // If no update available, register in no_update
             if ( ! $meta || version_compare( $meta->version ?? '0.0.0', $current, '<=' ) ) {
+                $trans->no_update[ $slug ] = (object) array_merge( $base_info, [
+                    'new_version' => $current,
+                    'package'     => ''
+                ] );
                 return $trans;
             }
 
-            $trans->response[ $slug ] = (object) [
-                'theme'       => $slug,
+            // If update is available, register in response
+            $trans->response[ $slug ] = (object) array_merge( $base_info, [
                 'new_version' => $meta->version ?? $current,
-                'package'     => $meta->download_url ?? '',
-                'url'         => $meta->homepage ?? '',
-            ];
+                'package'     => $meta->download_url ?? ''
+            ] );
+
+            // Remove from no_update if we're adding to response
+            if ( isset( $trans->no_update[ $slug ] ) ) {
+                unset( $trans->no_update[ $slug ] );
+            }
 
             return $trans;
         }
@@ -302,120 +347,73 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
             ];
         }
 
-
         /** Optional debug logger. */
         private function log( $msg ) {
             if ( apply_filters( 'updater_enable_debug', false ) ) {
                 error_log( "[Updater] {$msg}" );
             }
         }
-    }
-}
 
+        /**
+         * NEW STATIC HELPER: register everything (was the global function before).
+         *
+         * @param array $config  Same structure you passed to the old uupd_register_updater_and_manual_check().
+         */
+        public static function register( array $config ) {
+            // 1) Instantiate the updater class:
+            new self( $config );
 
-// ──────────────────────────────────────────────────────────────────────────────
-// GLOBAL HELPER: uupd_register_updater_and_manual_check()
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//  This function does two things at once:
-//   (1) Instantiates UUPD_Updater_V1 with your $config.
-//   (2) Hooks a “Check for updates” link under your plugin/theme row that
-//       clears the `upd_{slug}` transient and forces a fresh remote‐fetch.
-//
-//  $config must be an array containing these keys:
-//     • 'slug' (string)        — the same slug you pass to UUPD_Updater_V1.
-//     • 'name' (string)        — your plugin/theme’s human‐readable name.
-//     • 'version' (string)     — your plugin/theme version.
-//     • 'key' (string)         — secret key for your private updater endpoint.
-//     • 'server' (string)      — base URL of your updater endpoint.
-//     • 'plugin_file' (string) — *only for plugins*, the result of plugin_basename(__FILE__).
-//                              If omitted or empty, WP will treat it like a theme update.
-//     • 'textdomain' (string)  — your text domain (for translating “Check for updates”).
-//
-if ( ! function_exists( 'uupd_register_updater_and_manual_check' ) ) {
-    function uupd_register_updater_and_manual_check( array $config ) {
-        // 1) Instantiate the updater class (no changes here).
-        new \UUPD\V1\UUPD_Updater_V1( $config );
+            // 2) Add the “Check for updates” link under the plugin row:
+            $our_file   = $config['plugin_file'];   // e.g. "simply-static-export-notify/simply-static-export-notify.php"
+            $slug       = $config['slug'];          // e.g. "simply-static-export-notify"
+            $textdomain = ! empty( $config['textdomain'] ) ? $config['textdomain'] : $slug;
 
-        // 2) Prepare for row‐meta links:
-        $our_file   = $config['plugin_file'];   // e.g. "simply-static-export-notify/simply-static-export-notify.php"
-        $slug       = $config['slug'];          // e.g. "simply-static-export-notify"
-        $textdomain = ! empty( $config['textdomain'] ) ? $config['textdomain'] : $slug;
+            add_filter(
+                'plugin_row_meta',
+                function( array $links, string $file, array $plugin_data ) use ( $our_file, $slug, $textdomain ) {
+                    if ( $file === $our_file ) {
+                        $nonce     = wp_create_nonce( 'uupd_manual_check_' . $slug );
+                        $check_url = admin_url( sprintf(
+                            'admin.php?action=uupd_manual_check&slug=%s&_wpnonce=%s',
+                            rawurlencode( $slug ),
+                            $nonce
+                        ) );
 
-        // Hook the WILDCARD 'plugin_row_meta' filter:
-        add_filter(
-            'plugin_row_meta',
-            function( array $links, string $file, array $plugin_data ) use ( $our_file, $slug, $textdomain ) {
-                // Only modify row‐meta if this is OUR plugin
-                if ( $file === $our_file ) {
-                    // DEBUG: confirm callback for our plugin
-                    error_log( "uupd: wildcard plugin_row_meta for {$file}" );
+                        $links[] = sprintf(
+                            '<a href="%s">%s</a>',
+                            esc_url( $check_url ),
+                            esc_html__( 'Check for updates', $textdomain )
+                        );
+                    }
+                    return $links;
+                },
+                10,
+                3 // Must request all three args: ($links, $file, $plugin_data).
+            );
 
-                    //
-                    //  A) Build “View details” Thickbox link
-                    //
-                    // WordPress’s standard “View details” modal URL looks like:
-                    //   /wp-admin/plugin-install.php?tab=plugin-information&plugin={slug}&TB_iframe=1&width=600&height=550
-                    //
-                    // - 'plugin' must match our plugin’s slug (the one WP expects under plugins_api).
-                    // - We add 'TB_iframe=1&width=600&height=550' so it opens in a Thickbox modal.
-                    //
-                    $view_url = add_query_arg(
-                        [
-                            'tab'        => 'plugin-information',
-                            'plugin'     => $slug,
-                            'TB_iframe'  => 'true',
-                            'width'      => '600',
-                            'height'     => '550',
-                        ],
-                        admin_url( 'plugin-install.php' )
-                    );
+            // 3) Hook up the manual‐check listener:
+            add_action( 'admin_action_uupd_manual_check', function() use ( $slug, $config ) {
+            // 1) Grab the requested slug and normalize it.
+            $request_slug = isset( $_REQUEST['slug'] ) ? sanitize_key( wp_unslash( $_REQUEST['slug'] ) ) : '';
 
-                    // The CSS classes “thickbox open-plugin-details-modal” are what WP’s JS hooks onto
-                    // in order to launch the popup correctly.
-                    $links[] = sprintf(
-                        '<a href="%1$s" class="thickbox open-plugin-details-modal">%2$s</a>',
-                        esc_url( $view_url ),
-                        esc_html__( 'View details', $textdomain )
-                    );
+            // 2) If the incoming 'slug' doesn’t match this plugin’s slug, bail out early:
+            if ( $request_slug !== $slug ) {
+                return; 
+            }
 
-                    //
-                    //  B) Build “Check for updates” link (same as before)
-                    //
-                    $nonce = wp_create_nonce( 'uupd_manual_check_' . $slug );
-                    $check_url = admin_url( sprintf(
-                        'admin.php?action=uupd_manual_check&slug=%s&_wpnonce=%s',
-                        rawurlencode( $slug ),
-                        $nonce
-                    ) );
-
-                    $links[] = sprintf(
-                        '<a href="%s">%s</a>',
-                        esc_url( $check_url ),
-                        esc_html__( 'Check for updates', $textdomain )
-                    );
-                }
-
-                return $links;
-            },
-            10,
-            3 // Must request all three arguments: ( $links, $file, $plugin_data ).
-        );
-
-        // 3) Register the admin_action handler (no changes here):
-        add_action( 'admin_action_uupd_manual_check', function() use ( $slug, $config ) {
+            // 3) Only users who can update plugins/themes should proceed.
             if ( ! current_user_can( 'update_plugins' ) && ! current_user_can( 'update_themes' ) ) {
                 wp_die( __( 'Cheatin’ uh?' ) );
             }
 
-            $request_slug = isset( $_REQUEST['slug'] ) ? sanitize_key( wp_unslash( $_REQUEST['slug'] ) ) : '';
-            $nonce        = isset( $_REQUEST['_wpnonce'] ) ? wp_unslash( $_REQUEST['_wpnonce'] ) : '';
-            $checkname    = 'uupd_manual_check_' . $slug;
-
-            if ( $request_slug !== $slug || ! wp_verify_nonce( $nonce, $checkname ) ) {
+            // 4) Verify the nonce for this slug.
+            $nonce     = isset( $_REQUEST['_wpnonce'] ) ? wp_unslash( $_REQUEST['_wpnonce'] ) : '';
+            $checkname = 'uupd_manual_check_' . $slug;
+            if ( ! wp_verify_nonce( $nonce, $checkname ) ) {
                 wp_die( __( 'Security check failed.' ) );
             }
 
+            // 5) It’s our plugin’s “manual check,” so clear the transient and force WP to fetch again.
             delete_transient( 'upd_' . $slug );
 
             if ( ! empty( $config['plugin_file'] ) ) {
@@ -429,8 +427,7 @@ if ( ! function_exists( 'uupd_register_updater_and_manual_check' ) ) {
             wp_safe_redirect( $redirect );
             exit;
         } );
+
+        }
     }
 }
-
-
-
