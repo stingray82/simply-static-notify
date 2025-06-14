@@ -1,82 +1,83 @@
 <?php
 /**
- * Universal Updater Drop-In for Plugins & Themes
- * Encapsulated in UUPD_Updater – safe to include multiple times.
+ * Version 1.2
+ * Universal Updater Drop-In (UUPD) for Plugins & Themes
+ * --------------------------------------------------------
+ * Supports:
+ *  - Private update servers (via JSON metadata)
+ *  - GitHub-based updates (auto-detected via `server` URL)
+ *  - Manual update triggers
+ *  - Caching via WordPress transients
+ *  - Optional GitHub authentication (for private repos or rate-limiting)
  *
- * Usage (plugins):
+ * Safe to include multiple times. Class is namespaced and encapsulated.
  *
- *   1) Copy this file to `inc/updater.php` inside your plugin.
+ * ╭──────────────────────────── Plugin Integration ─────────────────────────────╮
  *
- *   2) In your **main plugin file** (e.g. `my-plugin.php`), do something like:
+ * 1. Save this file to: `includes/updater.php` inside your plugin.
  *
- *        add_action( 'plugins_loaded', function() {
- *            // Build one single config array:
- *            $updater_config = [
- *                'plugin_file' => plugin_basename( __FILE__ ),        // e.g. "my-plugin/my-plugin.php"
- *                'slug'        => 'my-plugin-slug',                   // must match your updater server’s slug
- *                'name'        => 'My Plugin Name',                   // human-readable name
- *                'version'     => MY_PLUGIN_VERSION,                   // define this somewhere above
- *                'key'         => 'YourSecretKeyHere',                // secret key
- *                'server'      => 'https://updater.my-server.com/u/',  // your updater endpoint
- *                // 'textdomain' is optional; if omitted, it defaults to 'slug'
- *                'textdomain'  => 'my-plugin-textdomain',              // for translating row-meta links
- *            ];
+ * 2. In your main plugin file (e.g. `my-plugin.php`), add:
  *
- *            // Load the drop-in (this file):
- *            require_once __DIR__ . '/inc/updater.php';
+ *    add_action( 'plugins_loaded', function() {
+ *        require_once __DIR__ . '/includes/updater.php';
  *
- *            // Call our one helper to do both:
- *            //   1) instantiate UUPD_Updater_V1
- *            //   2) add “View details” + “Check for updates” links that clear the cache transient
- *            uupd_register_updater_and_manual_check( $updater_config );
- *        }, 1 );
+ *        $updater_config = [
+ *            'plugin_file'   => plugin_basename( __FILE__ ),     // e.g. "my-plugin/my-plugin.php"
+ *            'slug'          => 'my-plugin-slug',                // must match your update slug
+ *            'name'          => 'My Plugin Name',                // shown in the update UI
+ *            'version'       => MY_PLUGIN_VERSION,               // define as constant
+ *            'key'           => 'YourSecretKeyHere',             // optional if using GitHub
+ *            'server'        => 'https://github.com/user/repo',  // GitHub or private server
+ *            'github_token'  => 'ghp_YourTokenHere',             // optional
+ *            // 'textdomain' => 'my-plugin-textdomain',         // optional, defaults to 'slug'
+ *        ];
  *
+ *        \UUPD\V1\UUPD_Updater_V1::register( $updater_config );
+ *    }, 1 );
  *
- * Usage (themes):
+ * ╰─────────────────────────────────────────────────────────────────────────────╯
  *
- *   1) Copy this file to `inc/updater.php` inside your theme.
+ * ╭──────────────────────────── Theme Integration ──────────────────────────────╮
  *
- *   2) In your theme’s `functions.php`, do:
+ * 1. Save this file to: `includes/updater.php` inside your theme.
  *
- *        add_action( 'after_setup_theme', function() {
- *            $updater_config = [
- *                // No plugin_file for themes; WP treats it as a theme update.
- *                'slug'       => 'my-theme-folder',            // match your theme folder & textdomain
- *                'name'       => 'My Theme Name',              // human-readable theme name
- *                'version'    => '1.0.0',                      // match your style.css Version header
- *                'key'        => 'YourSecretKeyHere',
- *                'server'     => 'https://updater.my-server.com/u/',
- *                // 'textdomain' is optional for themes as well
- *                'textdomain' => 'my-theme-textdomain',        // for translating row-meta links
- *            ];
+ * 2. In your `functions.php`, add:
  *
- *            require_once get_stylesheet_directory() . '/inc/updater.php';
- *            // On theme boot, register updater + manual-check links:
- *            add_action( 'admin_init', function() use ( $updater_config ) {
- *                uupd_register_updater_and_manual_check( $updater_config );
- *            } );
+ *    add_action( 'after_setup_theme', function() {
+ *        require_once get_stylesheet_directory() . '/includes/updater.php';
+ *
+ *        $updater_config = [
+ *            'slug'         => 'my-theme-folder',                // must match theme folder
+ *            'name'         => 'My Theme Name',
+ *            'version'      => '1.0.0',                           // match style.css Version
+ *            'key'          => 'YourSecretKeyHere',              // optional if using GitHub
+ *            'server'       => 'https://github.com/user/repo',   // GitHub or private
+ *            'github_token' => 'ghp_YourTokenHere',              // optional
+ *            // 'textdomain' => 'my-theme-textdomain',
+ *        ];
+ *
+ *        add_action( 'admin_init', function() use ( $updater_config ) {
+ *            \UUPD\V1\UUPD_Updater_V1::register( $updater_config );
  *        } );
+ *    } );
  *
+ * ╰─────────────────────────────────────────────────────────────────────────────╯
  *
- * 3) To enable debug logging, anywhere in your code add:
+ * 🔧 Optional Debugging:
+ *     Add this anywhere in your code:
+ *         add_filter( 'updater_enable_debug', fn( $e ) => true );
  *
- *       add_filter( 'updater_enable_debug', fn( $e ) => true );
+ *     Also enable in wp-config.php:
+ *         define( 'WP_DEBUG', true );
+ *         define( 'WP_DEBUG_LOG', true );
  *
- * 4) In your `wp-config.php`, turn on:
- *
- *       define( 'WP_DEBUG',     true );
- *       define( 'WP_DEBUG_LOG', true );
- *
- * Now your drop-in will:
- *  - Fetch metadata from `/u/?action=get_metadata&slug={slug}&key={key}`
- *  - Cache it for 1 hour (transient `upd_{slug}`)
- *  - Inject plugin or theme updates accordingly
- *  - Populate the “View details” modal (Thickbox) with your changelog/details
- *  - **Plus** add two row-meta links under the plugin (or theme) row:
- *      • “View details” → opens WP’s plugin-information Thickbox  
- *      • “Check for updates” → clears the cached transient (`upd_{slug}`),  
- *        optionally forces `wp_update_plugins()` (or `wp_update_themes()`),  
- *        then redirects back to Plugins (or Themes) so you see the fresh data.
+ * What This Does:
+ *  - Detects updates from GitHub or private JSON endpoints
+ *  - Auto-selects GitHub logic if `server` contains "github.com"
+ *  - Caches metadata in `upd_{slug}` for 1 hour
+ *  - Injects WordPress update data via native transients
+ *  - Adds “View details” + “Check for updates” under plugin/theme row
+ *  - Works seamlessly with `wp_update_plugins()` or `wp_update_themes()`
  */
 
 namespace UUPD\V1;
@@ -167,7 +168,57 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
             $current = $trans->checked[ $file ] ?? $c['version'];
             $meta    = get_transient( 'upd_' . $c['slug'] );
 
-            if ( false === $meta ) {
+            
+            // ──────────────────────────────────────────────────────────────────────────
+            // GitHub Update Support (auto-detected from 'server'):
+            // ──────────────────────────────────────────────────────────────────────────
+            if ( isset( $c['server'] ) && strpos( $c['server'], 'github.com' ) !== false ) {
+                $repo_url = rtrim( $c['server'], '/' );
+                $cache_key = 'uupd_github_release_' . md5( $repo_url );
+                $release = get_transient( $cache_key );
+
+                if ( false === $release ) {
+                    $api_url = str_replace( 'github.com', 'api.github.com/repos', $repo_url ) . '/releases/latest';
+                    $headers = [ 'Accept' => 'application/vnd.github.v3+json' ];
+                    if ( ! empty( $c['github_token'] ) ) {
+                        $headers['Authorization'] = 'token ' . $c['github_token'];
+                    }
+
+                    $response = wp_remote_get( $api_url, [ 'headers' => $headers ] );
+                    if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
+                        $release = json_decode( wp_remote_retrieve_body( $response ) );
+                        set_transient( $cache_key, $release, HOUR_IN_SECONDS );
+                    }
+                }
+
+                if ( isset( $release->tag_name ) ) {
+                    $zip_url = $release->zipball_url;
+
+                    if ( ! empty( $release->assets ) && is_array( $release->assets ) ) {
+                        foreach ( $release->assets as $asset ) {
+                            if ( isset( $asset->browser_download_url ) && str_ends_with( $asset->name, '.zip' ) ) {
+                                $zip_url = $asset->browser_download_url;
+                                break;
+                            }
+                        }
+                    }
+
+                    $meta = (object) [
+                    'version'       => ltrim( $release->tag_name, 'v' ),
+                    'download_url'  => $zip_url,
+                    'homepage'      => $release->html_url ?? $repo_url,
+                    'tested'        => '',
+                    'requires'      => '',
+                    'requires_php'  => '',
+                    'sections'      => [ 'changelog' => $release->body ?? '' ]
+                ];
+
+                set_transient( 'upd_' . $c['slug'], $meta, HOUR_IN_SECONDS );
+                $this->log( "✓ Cached metadata '{$c['slug']}' → v" . $meta->version );
+
+                }
+            }
+if ( false === $meta ) {
                 $this->fetch_remote();
                 $meta = get_transient( 'upd_' . $c['slug'] );
             }
@@ -370,7 +421,8 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
 
             add_filter(
                 'plugin_row_meta',
-                function( array $links, string $file, array $plugin_data ) use ( $our_file, $slug, $textdomain ) {
+                function( array $links, string $file, array $plugin_data ) use ( $our_file, $slug, $textdomain ) {      
+
                     if ( $file === $our_file ) {
                         $nonce     = wp_create_nonce( 'uupd_manual_check_' . $slug );
                         $check_url = admin_url( sprintf(
@@ -415,6 +467,13 @@ if ( ! class_exists( __NAMESPACE__ . '\UUPD_Updater_V1' ) ) {
 
             // 5) It’s our plugin’s “manual check,” so clear the transient and force WP to fetch again.
             delete_transient( 'upd_' . $slug );
+
+            //ALSO clear GitHub release cache if using GitHub
+            if ( isset( $config['server'] ) && strpos( $config['server'], 'github.com' ) !== false ) {
+                $repo_url  = rtrim( $config['server'], '/' );
+                $gh_key    = 'uupd_github_release_' . md5( $repo_url );
+                delete_transient( $gh_key );
+            }
 
             if ( ! empty( $config['plugin_file'] ) ) {
                 wp_update_plugins();
