@@ -12,14 +12,16 @@ IF "%PLUGIN_DIR:~-1%"=="\" SET "PLUGIN_DIR=%PLUGIN_DIR:~0,-1%"
 SET "PLUGIN_FILE=%PLUGIN_DIR%\simply-static-export-notify.php"
 SET "CHANGELOG_FILE=C:\Users\Nathan\Git\rup-changelogs\simply-static-export-notify.txt"
 SET "STATIC_FILE=static.txt"
-SET "DEST_DIR=D:\updater.reallyusefulplugins.com\plugin-updates\custom-packages\"
-SET "DEPLOY_TARGET=private"  REM github or private
+SET "README=%PLUGIN_DIR%\readme.txt"
+SET "TEMP_README=%PLUGIN_DIR%\readme_temp.txt"
+SET "DEST_DIR=D:\updater.reallyusefulplugins.com\plugin-updates\custom-packages"
 
+SET "DEPLOY_TARGET=private"  REM github or private
 REM GitHub settings
-SET "GITHUB_REPO=stingray82/test-update-repo"
+SET "GITHUB_REPO=stingray82/RUPChangelog"
 SET "TOKEN_FILE=C:\Ignore By Avast\0. PATHED Items\Plugins\deployscripts\github_token.txt"
 SET /P GITHUB_TOKEN=<"%TOKEN_FILE%"
-SET "ZIP_NAME=simply-static-export-notify.zip"
+SET "ZIP_NAME=rup-changelogger.zip"
 
 REM ─────────────────────────────────────────────────────
 REM VERIFY REQUIRED FILES
@@ -72,6 +74,24 @@ type "%CHANGELOG_FILE%" >> "%TEMP_README%"
 
 IF EXIST "%README%" copy "%README%" "%README%.bak" >nul
 move /Y "%TEMP_README%" "%README%"
+
+REM ─────────────────────────────────────────────────────
+REM GIT COMMIT AND PUSH CHANGES
+REM ─────────────────────────────────────────────────────
+pushd "%PLUGIN_DIR%"
+git add -A
+
+git diff --cached --quiet
+IF %ERRORLEVEL% EQU 1 (
+    git commit -m "Version %version% Release"
+    git push origin main
+    echo ✅ Git commit and push complete.
+) ELSE (
+    echo ⚠️ No changes to commit.
+)
+popd
+
+
 
 REM ─────────────────────────────────────────────────────
 REM ZIP PLUGIN FOLDER
@@ -184,5 +204,3 @@ IF /I "%DEPLOY_TARGET%"=="private" (
 )
 
 echo.
-echo ✅ Deployment complete → %DEPLOY_TARGET%
-pause
