@@ -21,7 +21,7 @@ REM GitHub settings
 SET "GITHUB_REPO=stingray82/RUPChangelog"
 SET "TOKEN_FILE=C:\Ignore By Avast\0. PATHED Items\Plugins\deployscripts\github_token.txt"
 SET /P GITHUB_TOKEN=<"%TOKEN_FILE%"
-SET "ZIP_NAME=rup-changelogger.zip"
+SET "ZIP_NAME=simply-static-export-notify.zip"
 
 REM ─────────────────────────────────────────────────────
 REM VERIFY REQUIRED FILES
