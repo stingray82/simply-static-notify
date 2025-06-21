@@ -26,6 +26,10 @@ Allow you to automatically export when saving post types and get discord notific
 = How do I modify the settings =
 After Activating Navigate to the new submenu in the simply static menu `Export/Notify` and modify your settings there 
 == Changelog == 
+= 1.1.3 16 June 2025 =
+Tweak: Updater Script - 1.2.3
+
+
 = 1.1.2 14 June 2025 =
 New: Updater Script - This will allow direct from GitHub updates if needed and works with the new deploy script
 
