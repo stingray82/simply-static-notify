@@ -54,7 +54,7 @@ add_action( 'plugins_loaded', function() {
         'name'        => 'Simply Static Export & Notify',         // human‐readable plugin name
         'version'     => rup_simply_static_export_notify_VERSION, // same as the VERSION constant above
         'key'         => '7tfbdV9znHuZtzLfmctUg6',                 // your secret key for private updater
-        'server'      => 'https://updater.reallyusefulplugins.com/u/',
+        'server'      => 'https://raw.githubusercontent.com/stingray82/simply-static-notify/main/uupd/index.json',
         // 'textdomain' is omitted, so the helper will automatically use 'slug'
         //'textdomain'  => 'simply-static-export-notify',           // used to translate “Check for updates”
     ];
