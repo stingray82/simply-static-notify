@@ -1,7 +1,7 @@
 {
     "slug": "simply-static-notify",
     "name": "Simply Static Export & Notify",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "author": "reallyusefulplugins.com",
     "author_homepage": "https://reallyusefulplugins.com",
     "requires_php": "8.0",
@@ -11,9 +11,9 @@
         "description": "Allow you to automatically export when saving post types and get discord notifications, including scheduled Posts",
         "installation": "1. Upload the `simply-static-export-notify` folder to the `/wp-content/plugins/` directory.<br />\r\n2. Activate the plugin through the 'Plugins' menu in WordPress.<br />\r\n3. Configure the plugin settings it is located in the Simply Static Menu",
         "frequently_asked_questions": "= How do I modify the settings =<br />\r\nAfter Activating Navigate to the new submenu in the simply static menu `Export/Notify` and modify your settings there",
-        "changelog": "<h4>1.1.4 21 June 2025</h4><ul><li>New: Updater Script - 1.2.3</li><li>New: Direct GitHub Update</li></ul><h4>1.1.3 16 June 2025</h4><ul><li>Tweak: Updater Script - 1.2.3</li></ul><h4>1.1.2 14 June 2025</h4><ul><li>New: Updater Script - This will allow direct from GitHub updates if needed and works with the new deploy script</li></ul><h4>1.1.1 14 June 2025</h4><ul><li>New: Test New Deploy Script</li></ul><h4>1.1 08 June 2025</h4><ul><li>New: Public Release</li></ul><h4>1.0.4 24 May 2025</h4><ul><li>Improve: Updater Class robustness in WP 6.8</li></ul><h4>1.0.3 24 May 2025</h4><ul><li>Tweak: Automatic Update Test</li><li>New: Debug Improvements - Now Select Location, defaults to wpconfig and a txt file, Auto Deletes Log when debugging turned off.</li><li>Improvements: Admin Area</li><li>New: Sub Menu of Simply Static</li></ul><h4>1.0.2 24 May 2025</h4><ul><li>Improved: Debug Logging now outside of debug log</li><li>New: Automatic Updating</li></ul><h4>1.0.1 24 May 2025</h4><ul><li>Improved: Debug Logging</li></ul><h4>1.0 24 May 2025</h4><ul><li>New: Internal Use Launch</li></ul>"
+        "changelog": "<h4>1.1.6 21 June 2025</h4><ul><li>New: Updates Now served directly from GitHub using UUPD</li></ul><h4>1.1.5 21 June 2025</h4><ul><li>New: Updates Now served directly from GitHub using UUPD</li></ul><h4>1.1.4 21 June 2025</h4><ul><li>New: Updater Script - 1.2.3</li><li>New: Direct GitHub Update</li></ul><h4>1.1.3 16 June 2025</h4><ul><li>Tweak: Updater Script - 1.2.3</li></ul><h4>1.1.2 14 June 2025</h4><ul><li>New: Updater Script - This will allow direct from GitHub updates if needed and works with the new deploy script</li></ul><h4>1.1.1 14 June 2025</h4><ul><li>New: Test New Deploy Script</li></ul><h4>1.1 08 June 2025</h4><ul><li>New: Public Release</li></ul><h4>1.0.4 24 May 2025</h4><ul><li>Improve: Updater Class robustness in WP 6.8</li></ul><h4>1.0.3 24 May 2025</h4><ul><li>Tweak: Automatic Update Test</li><li>New: Debug Improvements - Now Select Location, defaults to wpconfig and a txt file, Auto Deletes Log when debugging turned off.</li><li>Improvements: Admin Area</li><li>New: Sub Menu of Simply Static</li></ul><h4>1.0.2 24 May 2025</h4><ul><li>Improved: Debug Logging now outside of debug log</li><li>New: Automatic Updating</li></ul><h4>1.0.1 24 May 2025</h4><ul><li>Improved: Debug Logging</li></ul><h4>1.0 24 May 2025</h4><ul><li>New: Internal Use Launch</li></ul>"
     },
-    "last_updated": "2025-06-21 14:46:03",
+    "last_updated": "2025-06-21 16:41:54",
     "download_url": "https://github.com/stingray82/simply-static-notify/releases/latest/download/simply-static-export-notify.zip",
     "banners": {
         "low": "https://raw.githubusercontent.com/stingray82/simply-static-notify/main/uupd/banner-772x250.png",
