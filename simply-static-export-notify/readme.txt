@@ -26,6 +26,10 @@ Allow you to automatically export when saving post types and get discord notific
 = How do I modify the settings =
 After Activating Navigate to the new submenu in the simply static menu `Export/Notify` and modify your settings there 
 == Changelog == 
+= 1.1.7 06 July 2025 =
+New: Rescoped RUP_UUPD
+Update: UUPD 1.2.4
+
 = 1.1.6 21 June 2025 =
 New: Updates Now served directly from GitHub using UUPD
 
