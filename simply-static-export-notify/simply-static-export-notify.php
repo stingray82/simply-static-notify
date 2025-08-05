@@ -5,7 +5,7 @@
  * Tested up to:      6.8.2
  * Requires at least: 6.5
  * Requires PHP:      8.0
- * Version:           1.1.10
+ * Version:           1.1.11
  * Author:            reallyusefulplugins.com
  * Author URI:        https://reallyusefulplugins.com
  * License:           GPL2
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('rup_simply_static_export_notify_VERSION', '1.1.10');
+define('rup_simply_static_export_notify_VERSION', '1.1.11');
 define('rup_simply_static_export_notify_DIR', plugin_dir_path(__FILE__));
 define('rup_simply_static_export_notify_URL', plugin_dir_url(__FILE__));
 
@@ -65,6 +65,8 @@ add_action( 'plugins_loaded', function() {
 
 
 // MainWP Icon Filter
+/*
+
 add_filter('mainwp_child_stats_get_plugin_info', function($info, $slug) {
 
     if ('simply-static-export-notify/simply-static-export-notify.php' === $slug) {
@@ -74,3 +76,5 @@ add_filter('mainwp_child_stats_get_plugin_info', function($info, $slug) {
     return $info;
 
 }, 10, 2);
+
+*/
