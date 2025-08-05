@@ -65,7 +65,6 @@ add_action( 'plugins_loaded', function() {
 
 
 // MainWP Icon Filter
-/*
 
 add_filter('mainwp_child_stats_get_plugin_info', function($info, $slug) {
 
@@ -76,5 +75,3 @@ add_filter('mainwp_child_stats_get_plugin_info', function($info, $slug) {
     return $info;
 
 }, 10, 2);
-
-*/
