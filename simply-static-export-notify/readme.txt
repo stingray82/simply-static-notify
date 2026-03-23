@@ -3,8 +3,8 @@ Contributors: reallyusefulplugins
 Donate link: https://reallyusefulplugins.com/donate
 Tags: simplystatic, automation, export, static
 Requires at least: 6.5
-Tested up to: 6.8.2
-Stable tag: 1.1.12
+Tested up to: 6.9.4
+Stable tag: 1.2
 Requires PHP: 8.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -26,6 +26,10 @@ Allow you to automatically export when saving post types and get discord notific
 = How do I modify the settings =
 After Activating Navigate to the new submenu in the simply static menu `Export/Notify` and modify your settings there
 == Changelog ==
+= 1.2 23 March 2026 =
+Update: Updater to 2.0-Alpha
+Update: Compatibility
+
 = 1.1.12 12 August 2025 =
 Improved: Icon Filter
 Improved: Discord Notification
