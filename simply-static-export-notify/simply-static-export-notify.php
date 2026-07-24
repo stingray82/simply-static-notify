@@ -2,10 +2,10 @@
 /**
  * Plugin Name:       Simply Static Export & Notify
  * Description:       Allow you to automatically export when saving post types and get discord notifications, including scheduled Posts
- * Tested up to:      6.9.4
+ * Tested up to:      7.0.2
  * Requires at least: 6.5
  * Requires PHP:      8.0
- * Version:           1.2
+ * Version:           1.2.1
  * Author:            reallyusefulplugins.com
  * Author URI:        https://reallyusefulplugins.com
  * License:           GPL2
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('rup_simply_static_export_notify_VERSION', '1.2');
+define('rup_simply_static_export_notify_VERSION', '1.2.1');
 define('rup_simply_static_export_notify_DIR', plugin_dir_path(__FILE__));
 define('rup_simply_static_export_notify_URL', plugin_dir_url(__FILE__));
 

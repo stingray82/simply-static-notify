@@ -41,10 +41,10 @@
  * Important upgrade notes from V1:
  *
  *   • `vendor` is now REQUIRED
- *   • Core filters are now scoped by vendor + slug
+ *   • Core filters now support layered resolution: base, vendor-wide, and vendor + slug scoped
  *   • Cache keys are vendor-aware by default
  *   • Manual checks are vendor-aware
- *   • No slug-only compatibility layer is included for filters
+ *   • Slug-only filter naming is not supported; use base, vendor-wide, or vendor + slug filters
  *
  * Existing V1-style slug-only registrations must be updated before using V2.
  *
@@ -97,7 +97,10 @@
  *      https://api.github.com/repos/<owner>/<repo>/releases/latest
  *
  *    • Public repos work without a token
- *    • Private repos and/or private assets REQUIRE a GitHub token
+ *    • Private repos and/or private assets REQUIRE a GitHub Token
+ * Note: GitHub Releases mode uses /releases/latest, which returns GitHub’s
+ * latest non-prerelease release. For GitHub-hosted prerelease support, use
+ * JSON/static metadata mode with stable_version and prerelease_version fields.
  *
  * ───────────────────────── Mode Auto-Detection ─────────────────────────
  *
@@ -129,35 +132,93 @@
  *   github_asset_name  Preferred asset name for GitHub Releases
  *   mode               auto|json|github_release
  *   allow_prerelease   true|false
+ *   release_channel    Optional channel: stable|dev|alpha|beta|rc|prerelease
  *   cache_prefix       Transient key prefix. Default: 'uupd_<vendor>__'
  *   icons              Optional icons array
  *   banners            Optional banners array
  *   screenshots        Optional screenshots array
  *   screenshot         Optional single screenshot URL
  *
- * ───────────────────────── Scoped Filters ─────────────────────────
+ * ───────────────────────── Filter Hierarchy ─────────────────────────
  *
- * UUPD 2.0 uses vendor + slug scoped filters.
+ * UUPD 2.0 supports layered filter resolution for flexibility during
+ * development, testing, fleet-wide overrides, and per-product exceptions.
+ *
+ * Filters are applied in this order:
+ *
+ *   1) Base/global filter:
+ *        uupd/<filter>
+ *
+ *   2) Vendor-wide filter:
+ *        uupd/<filter>/<vendor>
+ *
+ *   3) Fully scoped filter:
+ *        uupd/<filter>/<vendor>/<slug>
+ *
+ * Later filters receive the result of earlier ones and may override them.
  *
  * Example:
  *
- *   add_filter( 'uupd/server_url/tdlab/my-plugin', function( $url, $vendor, $slug ) {
+ *   add_filter( 'uupd/server_url', function( $url, $vendor, $slug, $instance_key ) {
+ *       if ( $vendor === 'tdlab' ) {
+ *           return 'https://updates.example.com/';
+ *       }
+ *       return $url;
+ *   }, 10, 4 );
+ *
+ *   add_filter( 'uupd/server_url/tdlab', function( $url,  $vendor, $slug, $instance_key ) {
+ *       return 'https://staging.example.com/';
+ *   }, 10, 4 );
+ *
+ *   add_filter( 'uupd/server_url/tdlab/my-plugin', function( $url, $vendor, $slug, $instance_key ) {
  *       return 'https://example.com/custom-endpoint.json';
- *   }, 10, 3 );
+ *   }, 10, 4 );
  *
  * Common filters:
  *
+ *   uupd/filter_config
+ *   uupd/filter_config/<vendor>
  *   uupd/filter_config/<vendor>/<slug>
+ *   uupd/server_url
+ *   uupd/server_url/<vendor>
  *   uupd/server_url/<vendor>/<slug>
+ *   uupd/cache_prefix
+ *   uupd/cache_prefix/<vendor>
  *   uupd/cache_prefix/<vendor>/<slug>
+ *   uupd/github_token_override
+ *   uupd/github_token_override/<vendor>
  *   uupd/github_token_override/<vendor>/<slug>
+ *   uupd/icons
+ *   uupd/icons/<vendor>
  *   uupd/icons/<vendor>/<slug>
+ *   uupd/banners
+ *   uupd/banners/<vendor>
  *   uupd/banners/<vendor>/<slug>
+ *   uupd/screenshots
+ *   uupd/screenshots/<vendor>
  *   uupd/screenshots/<vendor>/<slug>
+ *   uupd/screenshot
+ *   uupd/screenshot/<vendor>
  *   uupd/screenshot/<vendor>/<slug>
+ *   uupd_success_cache_ttl
+ *   uupd_success_cache_ttl/<vendor>
  *   uupd_success_cache_ttl/<vendor>/<slug>
+ *   uupd_fetch_remote_error_ttl
+ *   uupd_fetch_remote_error_ttl/<vendor>
  *   uupd_fetch_remote_error_ttl/<vendor>/<slug>
+ *   uupd/manual_check_redirect
+ *   uupd/manual_check_redirect/<vendor>
  *   uupd/manual_check_redirect/<vendor>/<slug>
+ *   uupd/allow_prerelease
+ *   uupd/allow_prerelease/<vendor>
+ *   uupd/allow_prerelease/<vendor>/<slug>
+ *   uupd/remote_url
+ *   uupd/remote_url/<vendor>
+ *   uupd/remote_url/<vendor>/<slug>
+ *   uupd/metadata_result
+ *   uupd/metadata_result/<vendor>
+ *   uupd/metadata_result/<vendor>/<slug>
+ *
  *
  * ───────────────────────── Actions ─────────────────────────
  *
@@ -275,6 +336,45 @@
  *     define( 'WP_DEBUG', true );
  *     define( 'WP_DEBUG_LOG', true );
  *
+ * ───────────────────────── Release Channels ─────────────────────────
+ *
+ * UUPD supports hierarchical release channels for controlling which
+ * versions are considered valid updates.
+ *
+ * Channels are cumulative, meaning each level includes all previous ones:
+ *
+ *   stable      → Stable releases only (default)
+ *   dev         → Stable + dev
+ *   alpha       → Stable + dev + alpha
+ *   beta        → Stable + dev + alpha + beta
+ *   rc          → Stable + dev + alpha + beta + rc
+ *   prerelease  → All versions (stable + all pre-release types)
+ *
+ * Example:
+ *
+ *   'release_channel' => 'beta'
+ *
+ *   Allows updates from:
+ *     - stable
+ *     - dev
+ *     - alpha
+ *     - beta
+ *
+ *   But excludes:
+ *     - rc (if considered higher than beta in your system)
+ *
+ * To allow ALL non-stable releases, use:
+ *
+ *   'release_channel' => 'prerelease'
+ *
+ * Note:
+ *   • If `release_channel` is not set, it defaults to:
+ *       - 'stable' when allow_prerelease = false
+ *       - 'prerelease' when allow_prerelease = true
+ *
+ *   • `allow_prerelease` acts as a convenience flag but
+ *     `release_channel` provides full control.
+ *
  * ───────────────────────── Summary ─────────────────────────
  *
  * • Fetches update metadata from JSON or GitHub Releases
@@ -305,10 +405,17 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 		}
 
 		/**
-		 * Apply a vendor+slug scoped filter.
+		 * Apply a layered filter using base, vendor-wide, and vendor+slug scopes.
 		 *
-		 * The callback receives:
-		 *   - $default
+		 * Filters are resolved in this order:
+		 *   1) {$filter_base}
+		 *   2) {$filter_base}/{$vendor}
+		 *   3) {$filter_base}/{$vendor}/{$slug}
+		 *
+		 * Each later filter receives the value returned by the previous stage.
+		 *
+		 * Callbacks receive:
+		 *   - $value
 		 *   - $vendor
 		 *   - $slug
 		 *   - $instance_key
@@ -320,16 +427,35 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 		 * @return mixed
 		 */
 		private static function apply_filters_scoped( $filter_base, $default, $vendor, $slug ) {
-			$vendor = self::sanitize_identity_part( $vendor );
-			$slug   = self::sanitize_identity_part( $slug );
+			$vendor       = self::sanitize_identity_part( $vendor );
+			$slug         = self::sanitize_identity_part( $slug );
+			$instance_key = self::build_instance_key( $vendor, $slug );
 
-			return apply_filters(
-				"{$filter_base}/{$vendor}/{$slug}",
+			$value = apply_filters(
+				$filter_base,
 				$default,
 				$vendor,
 				$slug,
-				self::build_instance_key( $vendor, $slug )
+				$instance_key
 			);
+
+			$value = apply_filters(
+				"{$filter_base}/{$vendor}",
+				$value,
+				$vendor,
+				$slug,
+				$instance_key
+			);
+
+			$value = apply_filters(
+				"{$filter_base}/{$vendor}/{$slug}",
+				$value,
+				$vendor,
+				$slug,
+				$instance_key
+			);
+
+			return $value;
 		}
 
 		/**
@@ -365,10 +491,17 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 		 *   @type string $server           Base URL, JSON metadata URL, or GitHub repo root URL.
 		 *   @type string $plugin_file      Optional plugin_basename(__FILE__) for plugins.
 		 *   @type bool   $allow_prerelease Optional whether prerelease versions are allowed.
+		 *   @type string $release_channel Optional release channel: stable|dev|alpha|beta|rc|prerelease.
 		 *   @type string $cache_prefix     Optional transient prefix. Default 'uupd_<vendor>__'.
 		 *   @type string $mode             Optional mode: auto|json|github_release.
 		 *   @type string $github_token     Optional GitHub token for private release access.
 		 *   @type string $github_asset_name Optional preferred release asset filename.
+		 *   @type string $mode              Optional mode: auto|json|github_release.
+		 *   @type string $github_asset_name Optional preferred GitHub release asset filename.
+		 *   @type array  $icons             Optional icons array.
+		 *   @type array  $banners           Optional banners array.
+		 *   @type array  $screenshots       Optional screenshots array.
+		 *   @type string $screenshot        Optional single screenshot URL.
 		 * }
 		 */
 		public function __construct( array $config ) {
@@ -481,6 +614,52 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			return '';
 		}
 
+		private function select_metadata_track( $meta ) {
+			if ( ! is_object( $meta ) ) {
+				return $meta;
+			}
+
+			if ( ! empty( $meta->stable_version ) ) {
+				$meta->version = $meta->stable_version;
+			}
+
+			if ( ! empty( $meta->stable_download_url ) ) {
+				$meta->download_url  = $meta->stable_download_url;
+				$meta->package       = $meta->stable_download_url;
+				$meta->download_link = $meta->stable_download_url;
+			}
+
+			$allow_prerelease = ! empty( $this->config['allow_prerelease'] );
+
+			if ( ! $allow_prerelease ) {
+				$meta->selected_release_channel = 'stable';
+				return $meta;
+			}
+
+			$stable_version = $meta->version ?? '';
+			$pre_version    = $meta->prerelease_version ?? '';
+
+			if ( '' === (string) $pre_version ) {
+				return $meta;
+			}
+
+			if ( version_compare( $this->normalize_version( $pre_version ), $this->normalize_version( $stable_version ), '>' ) ) {
+				$meta->version = $pre_version;
+
+				if ( ! empty( $meta->prerelease_download_url ) ) {
+					$meta->download_url  = $meta->prerelease_download_url;
+					$meta->package       = $meta->prerelease_download_url;
+					$meta->download_link = $meta->prerelease_download_url;
+				}
+
+				$meta->selected_release_channel = $meta->prerelease_channel ?? 'prerelease';
+			}
+
+			return $meta;
+}
+
+
+
 		/** Fetch metadata JSON from remote server and cache it. */
 		private function fetch_remote() {
 			$c          = $this->config;
@@ -491,7 +670,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			if ( empty( $c['server'] ) ) {
 				$this->log( 'No server URL configured — skipping fetch and caching an error state.' );
 				$ttl = self::apply_filters_scoped( 'uupd_fetch_remote_error_ttl', 6 * HOUR_IN_SECONDS, $vendor, $slug_plain );
-				set_transient( $prefix . $slug_plain . '_error', time(), $ttl );
+				set_transient( $this->get_metadata_cache_key() . '_error', time(), $ttl );
 
 				self::do_metadata_failure_actions( $vendor, $slug_plain, [
 					'vendor'  => $vendor,
@@ -512,12 +691,15 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 				$url = $c['server'];
 			} else {
 				$separator = strpos( $c['server'], '?' ) === false ? '?' : '&';
-				$url = untrailingslashit( $c['server'] ) . $separator . "action=get_metadata&slug={$slug_qs}&key={$key_qs}&domain={$host_qs}";
+				$allow_prerelease_qs = ! empty( $c['allow_prerelease'] ) ? '1' : '0';
+				$release_channel_qs  = rawurlencode( $this->get_release_channel() );
+
+				$url = untrailingslashit( $c['server'] ) . $separator . "action=get_metadata&slug={$slug_qs}&key={$key_qs}&domain={$host_qs}&allow_prerelease={$allow_prerelease_qs}&release_channel={$release_channel_qs}";
 			}
 
 			$url = self::apply_filters_scoped( 'uupd/remote_url', $url, $vendor, $slug_plain );
 
-			$failure_cache_key = $prefix . $slug_plain . '_error';
+			$failure_cache_key = $this->get_metadata_cache_key() . '_error';
 
 			$this->log( " Fetching metadata: {$url}" );
 			do_action( 'uupd/before_fetch_remote', $vendor, $slug_plain, $c );
@@ -585,7 +767,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			$meta = self::apply_filters_scoped( 'uupd/metadata_result', $meta, $vendor, $slug_plain );
 
 			$ttl = self::apply_filters_scoped( 'uupd_success_cache_ttl', 6 * HOUR_IN_SECONDS, $vendor, $slug_plain );
-			set_transient( $prefix . $slug_plain, $meta, $ttl );
+			set_transient( $this->get_metadata_cache_key(), $meta, $ttl );
 			delete_transient( $failure_cache_key );
 			$this->log( " Cached metadata '{$slug_plain}' → v" . ( $meta->version ?? 'unknown' ) );
 		}
@@ -707,7 +889,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			$slug      = $c['slug'];
 			$vendor    = $c['vendor'] ?? '';
 			$prefix    = $c['cache_prefix'] ?? 'uupd_' . $vendor . '__';
-			$cache_id  = $prefix . $slug;
+			$cache_id = $this->get_metadata_cache_key();
 			$error_key = $cache_id . '_error';
 
 			$this->log( "Plugin-update hook for '{$slug}'" );
@@ -819,6 +1001,8 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 				return $trans;
 			}
 
+			$meta = $this->select_metadata_track( $meta );
+
 			$resolved_pkg = $this->resolve_download_url( $meta );
 
 			if ( $resolved_pkg && empty( $meta->download_url ) ) {
@@ -894,7 +1078,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			$slug      = $c['real_slug'] ?? $c['slug'];
 			$vendor    = $c['vendor'] ?? '';
 			$prefix    = $c['cache_prefix'] ?? 'uupd_' . $vendor . '__';
-			$cache_id  = $prefix . $c['slug'];
+			$cache_id = $this->get_metadata_cache_key();
 			$error_key = $cache_id . '_error';
 
 			$this->log( "Theme-update hook for '{$c['slug']}'" );
@@ -1006,6 +1190,8 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 				return $trans;
 			}
 
+			$meta = $this->select_metadata_track( $meta );
+
 			$resolved_pkg = $this->resolve_download_url( $meta );
 
 			if ( $resolved_pkg && empty( $meta->download_url ) ) {
@@ -1071,8 +1257,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 				return $res;
 			}
 
-			$prefix = $c['cache_prefix'] ?? 'uupd_' . ( $c['vendor'] ?? '' ) . '__';
-			$meta   = get_transient( $prefix . $c['slug'] );
+			$meta = get_transient( $this->get_metadata_cache_key() );
 			if ( ! $meta ) {
 				return $res;
 			}
@@ -1113,8 +1298,7 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 				return $res;
 			}
 
-			$prefix = $c['cache_prefix'] ?? 'uupd_' . ( $c['vendor'] ?? '' ) . '__';
-			$meta   = get_transient( $prefix . $c['slug'] );
+			$meta = get_transient( $this->get_metadata_cache_key() );
 			if ( ! $meta ) {
 				return $res;
 			}
@@ -1328,6 +1512,28 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 			return $release->zipball_url ?? '';
 		}
 
+		private function get_release_channel() {
+			$channel = isset( $this->config['release_channel'] )
+				? strtolower( sanitize_key( (string) $this->config['release_channel'] ) )
+				: '';
+
+			if ( in_array( $channel, [ 'stable', 'dev', 'alpha', 'beta', 'rc', 'prerelease' ], true ) ) {
+				return $channel;
+			}
+
+			return ! empty( $this->config['allow_prerelease'] ) ? 'prerelease' : 'stable';
+		}
+
+		private function get_metadata_cache_key() {
+			$c       = $this->config;
+			$vendor  = $c['vendor'] ?? '';
+			$slug    = $c['slug'] ?? '';
+			$prefix  = $c['cache_prefix'] ?? 'uupd_' . $vendor . '__';
+			$channel = $this->get_release_channel();
+
+			return $prefix . $slug . '_' . $channel;
+		}
+
 		private static function ends_with( $haystack, $needle ) {
 			if ( function_exists( 'str_ends_with' ) ) {
 				return \str_ends_with( (string) $haystack, (string) $needle );
@@ -1417,6 +1623,12 @@ if ( ! class_exists( __NAMESPACE__ . '\Updater_V2' ) ) {
 					}
 
 					$prefix = $config['cache_prefix'] ?? 'uupd_' . $vendor . '__';
+					foreach ( [ 'stable', 'dev', 'alpha', 'beta', 'rc', 'prerelease' ] as $channel ) {
+						delete_transient( $prefix . $slug . '_' . $channel );
+						delete_transient( $prefix . $slug . '_' . $channel . '_error' );
+					}
+
+					// Legacy cache cleanup.
 					delete_transient( $prefix . $slug );
 					delete_transient( $prefix . $slug . '_error' );
 
