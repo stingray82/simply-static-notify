@@ -341,21 +341,21 @@ PY
     *) echo "[ERROR] GitHub tag lookup returned HTTP $code" >&2; exit 1 ;;
   esac
   if [[ "$code" == 200 ]]; then
-    id="$("${PYTHON_CMD[@]}" -c 'import json,sys;print(json.load(open(sys.argv[1]))["id"])' "$tmp/existing.json")"
+    id="$("${PYTHON_CMD[@]}" -c 'import json,sys;print(json.load(open(sys.argv[1], encoding="utf-8"))["id"])' "$tmp/existing.json")"
     echo '[INFO] GitHub: updating existing release metadata...'
     curl --globoff -fsS -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' -H 'Content-Type: application/json' --data-binary @"$tmp/body.json" "$api/$id" > "$tmp/release.json"
   else
     echo '[INFO] GitHub: creating release metadata...'
     curl --globoff -fsS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' -H 'Content-Type: application/json' --data-binary @"$tmp/body.json" "$api" > "$tmp/release.json"
   fi
-  id="$("${PYTHON_CMD[@]}" -c 'import json,sys;print(json.load(open(sys.argv[1]))["id"])' "$tmp/release.json")"
+  id="$("${PYTHON_CMD[@]}" -c 'import json,sys;print(json.load(open(sys.argv[1], encoding="utf-8"))["id"])' "$tmp/release.json")"
   [[ "$id" =~ ^[0-9]+$ ]] || { echo '[ERROR] GitHub returned invalid release ID' >&2; exit 1; }
   # Delete matching old asset if release already existed (GitHub rejects duplicate names).
   echo "[INFO] GitHub: retrieving assets for release ID $id..."
   curl --globoff -fsS -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' "$api/$id/assets" > "$tmp/assets.json"
   "${PYTHON_CMD[@]}" - "$tmp/assets.json" "$(basename "$zip_path")" > "$tmp/delete-ids" <<'PY'
 import json,sys
-for asset in json.load(open(sys.argv[1])):
+for asset in json.load(open(sys.argv[1], encoding="utf-8")):
  if asset.get('name')==sys.argv[2]:print(asset['id'])
 PY
   while IFS= read -r oldid || [[ -n "$oldid" ]]; do
